@@ -2,7 +2,7 @@ import { Command } from 'commander';
 import { addCredential, getStatus, removeCredential, testCredential } from './auth/store.js';
 import { listProviders } from './auth/providers.js';
 import { loginOpenAIViaCodex, logoutOpenAIViaCodex } from './auth/codex-auth.js';
-import { getModelConfig, setFallbackModels, setPrimaryModel } from './config-models.js';
+import { getModelConfig, listProviderProfiles, setFallbackModels, setPrimaryModel, useProviderProfile } from './config-models.js';
 import { runReadinessCheck } from './test-command.js';
 import { probeModel } from './model-probe.js';
 import { runDoctor } from './doctor.js';
@@ -10,10 +10,10 @@ import { runInit } from './init.js';
 import { missingProvidersForOrder } from './compat.js';
 import { promptSecret } from './lib/prompt-secret.js';
 import { logEvent } from './lib/telemetry.js';
+import { inferWithFallback } from './infer.js';
 
 export function createCli() {
   const program = new Command();
-
   program.name('destiny').description('Destiny meta CLI tool').version('0.1.0');
 
   const auth = program.command('auth').description('Manage inference credentials in local .env');
@@ -101,6 +101,59 @@ export function createCli() {
     const cfg = setFallbackModels({ envPath: opts.env, models: models || [] });
     warnMissingProviders(cfg, opts.env);
     console.log(`Fallback order updated: ${cfg.fallbacks.length ? cfg.fallbacks.join(', ') : '(none)'}`);
+  }));
+
+  const provider = program.command('provider').description('Provider profile shortcuts');
+  provider.command('list').description('List provider profiles').action(() => {
+    console.log(listProviderProfiles().join('\n'));
+  });
+  provider.command('use <providerName>').description('Set primary/fallback model order for a provider profile').option('--env <path>', 'Path to .env file (default: ./.env)').action(safe(async (providerName, opts) => {
+    const cfg = useProviderProfile({ envPath: opts.env, provider: providerName });
+    warnMissingProviders(cfg, opts.env);
+    console.log(`Provider profile applied: ${cfg.provider}`);
+    console.log(`Primary: ${cfg.primary}`);
+    console.log(`Fallbacks: ${cfg.fallbacks.join(', ')}`);
+  }));
+
+  program.command('run <prompt...>').description('Run a prompt through model precedence with automatic fallback').option('--env <path>', 'Path to .env file (default: ./.env)').option('--json', 'JSON output').option('--max-output-tokens <n>', 'Max output tokens', '220').action(safe(async (promptParts, opts) => {
+    const prompt = promptParts.join(' ').trim();
+    if (!prompt) throw new Error('Prompt is required.');
+    const cfg = getModelConfig({ envPath: opts.env });
+    const res = await inferWithFallback({ prompt, models: cfg.resolvedOrder, envPath: opts.env, maxOutputTokens: Number(opts.maxOutputTokens) || 220 });
+
+    logEvent('run', { ok: res.ok, attempts: res.attempts?.length || 0, model: res.model || null });
+
+    if (opts.json) return console.log(JSON.stringify(res, null, 2));
+    if (!res.ok) {
+      console.log('Run failed across all models.');
+      for (const a of res.attempts || []) console.log(`- ${a.model}: FAIL (${a.error || 'unknown'})`);
+      process.exitCode = 1;
+      return;
+    }
+
+    console.log(`[${res.provider}] ${res.model}`);
+    console.log(res.text || '(empty response)');
+  }));
+
+  program.command('trace <prompt...>').description('Run prompt and print model selection + fallback trace').option('--env <path>', 'Path to .env file (default: ./.env)').option('--max-output-tokens <n>', 'Max output tokens', '220').option('--json', 'JSON output').action(safe(async (promptParts, opts) => {
+    const prompt = promptParts.join(' ').trim();
+    if (!prompt) throw new Error('Prompt is required.');
+    const cfg = getModelConfig({ envPath: opts.env });
+    const res = await inferWithFallback({ prompt, models: cfg.resolvedOrder, envPath: opts.env, maxOutputTokens: Number(opts.maxOutputTokens) || 220 });
+
+    if (opts.json) return console.log(JSON.stringify(res, null, 2));
+
+    console.log('Trace:');
+    for (const [i, a] of (res.attempts || []).entries()) {
+      console.log(`${i + 1}. ${a.model} -> ${a.ok ? 'PASS' : 'FAIL'} (${a.ms}ms${a.error ? `, ${a.error}` : ''})`);
+    }
+    if (res.ok) {
+      console.log(`\nSelected: ${res.model} (${res.provider})`);
+      console.log(res.text || '(empty response)');
+    } else {
+      console.log('\nAll model attempts failed.');
+      process.exitCode = 1;
+    }
   }));
 
   program.command('init').description('Initialize local Destiny project config in .env').option('--env <path>', 'Path to .env file (default: ./.env)').action(safe(async (opts) => {

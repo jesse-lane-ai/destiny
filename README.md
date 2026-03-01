@@ -45,6 +45,26 @@ destiny model set-primary openai-codex/gpt-5.3-codex
 destiny model set-fallbacks openai-codex/gpt-5.2 openrouter/minimax/minimax-m2.5
 ```
 
+## Provider shortcuts
+
+```bash
+destiny provider list
+destiny provider use openai
+destiny provider use openrouter
+destiny provider use anthropic
+destiny provider use google
+```
+
+## Run + trace
+
+```bash
+# Run prompt through precedence chain (auto-fallback)
+destiny run "write a 2-line roast about tech debt"
+
+# Run prompt and show fallback trace details
+destiny trace "give me a one-word answer: bananas"
+```
+
 ## Health & probes
 
 ```bash
