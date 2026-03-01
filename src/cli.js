@@ -156,6 +156,40 @@ export function createCli() {
     }
   }));
 
+
+  program.command('founder-judge <idea...>').description('Judge a startup idea brutally and return actionable verdict').option('--env <path>', 'Path to .env file (default: ./.env)').option('--max-output-tokens <n>', 'Max output tokens', '420').option('--json', 'JSON output').action(safe(async (ideaParts, opts) => {
+    const idea = ideaParts.join(' ').trim();
+    if (!idea) throw new Error('Idea is required.');
+
+    const prompt = [
+      'You are founder-judge, a ruthless but constructive startup evaluator.',
+      'Evaluate the idea and respond using EXACTLY these sections:',
+      '1) Verdict (one line)',
+      '2) Why this might fail (3 bullets)',
+      '3) Why this might win (3 bullets)',
+      '4) 48-hour validation plan (5 concrete steps)',
+      '5) Scorecard with 1-10 scores for: market pain, distribution, moat potential, speed to revenue, founder unfair advantage',
+      '',
+      `Idea: ${idea}`
+    ].join('\n');
+
+    const cfg = getModelConfig({ envPath: opts.env });
+    const res = await inferWithFallback({ prompt, models: cfg.resolvedOrder, envPath: opts.env, maxOutputTokens: Number(opts.maxOutputTokens) || 420 });
+    logEvent('founder-judge', { ok: res.ok, attempts: res.attempts?.length || 0, model: res.model || null });
+
+    if (opts.json) return console.log(JSON.stringify(res, null, 2));
+
+    if (!res.ok) {
+      console.log('founder-judge failed across all models.');
+      for (const a of res.attempts || []) console.log(`- ${a.model}: FAIL (${a.error || 'unknown'})`);
+      process.exitCode = 1;
+      return;
+    }
+
+    console.log(`[${res.provider}] ${res.model}`);
+    console.log(res.text || '(empty response)');
+  }));
+
   program.command('init').description('Initialize local Destiny project config in .env').option('--env <path>', 'Path to .env file (default: ./.env)').action(safe(async (opts) => {
     const out = runInit({ envPath: opts.env });
     console.log(`Initialized Destiny config in ${out.envPath}`);

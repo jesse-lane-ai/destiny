@@ -63,6 +63,10 @@ destiny run "write a 2-line roast about tech debt"
 
 # Run prompt and show fallback trace details
 destiny trace "give me a one-word answer: bananas"
+
+# Judge a startup idea with a structured verdict
+# (brutal but actionable)
+destiny founder-judge "AI assistant for HVAC technicians"
 ```
 
 ## Health & probes
