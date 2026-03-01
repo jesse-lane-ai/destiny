@@ -1,8 +1,8 @@
 export const PROVIDERS = {
   'openai-oauth': {
-    label: 'OpenAI OAuth',
+    label: 'OpenAI OAuth (Codex)',
     type: 'oauth',
-    envKeys: ['OPENAI_OAUTH_ACCESS_TOKEN', 'OPENAI_OAUTH_REFRESH_TOKEN', 'OPENAI_OAUTH_EXPIRES_AT']
+    envKeys: ['OPENAI_CODEX_AUTH_FILE', 'OPENAI_OAUTH_PROVIDER']
   },
   'openai-key': {
     label: 'OpenAI API Key',

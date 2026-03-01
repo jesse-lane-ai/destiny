@@ -1,5 +1,7 @@
+import fs from 'node:fs';
 import { getProvider, listProviders } from './providers.js';
 import { loadEnv, removeEnvValue, resolveEnvPath, setEnvValue } from '../lib/env.js';
+import { defaultCodexAuthPath } from './codex-auth.js';
 
 export function getStatus({ envPath }) {
   const finalPath = resolveEnvPath(envPath);
@@ -7,6 +9,20 @@ export function getStatus({ envPath }) {
 
   return listProviders().map((providerName) => {
     const provider = getProvider(providerName);
+
+    if (providerName === 'openai-oauth') {
+      const filePath = env.OPENAI_CODEX_AUTH_FILE || process.env.OPENAI_CODEX_AUTH_FILE || defaultCodexAuthPath();
+      const exists = fs.existsSync(filePath);
+      return {
+        provider: providerName,
+        label: provider.label,
+        key: 'OPENAI_CODEX_AUTH_FILE',
+        configured: exists,
+        source: exists ? 'codex-cache' : 'none',
+        masked: exists ? filePath : null
+      };
+    }
+
     const found = provider.envKeys
       .map((key) => ({ key, value: env[key] || process.env[key] || null, source: env[key] ? '.env' : process.env[key] ? 'process.env' : 'none' }))
       .find((x) => Boolean(x.value));
