@@ -55,3 +55,14 @@ test('run command returns failure when no inference credentials exist', () => {
   assert.match(run.stdout, /Run failed across all models\./);
   assert.match(run.stdout, /FAIL/);
 });
+
+test('founder-judge returns failure when no inference credentials exist', () => {
+  const dir = mkdtempSync(path.join(tmpdir(), 'destiny-test-'));
+  const envPath = path.join(dir, '.env');
+  writeFileSync(envPath, '', 'utf8');
+
+  const run = runCli(['founder-judge', 'AI tool for plumbers', '--env', envPath]);
+  assert.equal(run.status, 1, `status=${run.status}\nstdout=${run.stdout}\nstderr=${run.stderr}`);
+  assert.match(run.stdout, /founder-judge failed across all models\./);
+  assert.match(run.stdout, /FAIL/);
+});
