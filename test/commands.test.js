@@ -66,3 +66,14 @@ test('founder-judge returns failure when no inference credentials exist', () => 
   assert.match(run.stdout, /founder-judge failed across all models\./);
   assert.match(run.stdout, /FAIL/);
 });
+
+test('doomscroll returns failure when no inference credentials exist', () => {
+  const dir = mkdtempSync(path.join(tmpdir(), 'destiny-test-'));
+  const envPath = path.join(dir, '.env');
+  writeFileSync(envPath, '', 'utf8');
+
+  const run = runCli(['doomscroll', 'AI coding agents', '--env', envPath]);
+  assert.equal(run.status, 1, `status=${run.status}\nstdout=${run.stdout}\nstderr=${run.stderr}`);
+  assert.match(run.stdout, /doomscroll failed across all models\./);
+  assert.match(run.stdout, /FAIL/);
+});

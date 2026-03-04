@@ -190,6 +190,38 @@ export function createCli() {
     console.log(res.text || '(empty response)');
   }));
 
+  program.command('doomscroll <topic...>').description('Simulate a chaotic doomscroll feed and extract strategic signal').option('--env <path>', 'Path to .env file (default: ./.env)').option('--max-output-tokens <n>', 'Max output tokens', '420').option('--json', 'JSON output').action(safe(async (topicParts, opts) => {
+    const topic = topicParts.join(' ').trim();
+    if (!topic) throw new Error('Topic is required.');
+
+    const prompt = [
+      'You are doomscroll, a cynical trend analyst that distills online noise into action.',
+      'Respond using EXACTLY these sections:',
+      '1) Feed snapshot (5 bullets of what appears to be happening)',
+      '2) What is signal vs noise (2 bullets each)',
+      '3) Contrarian take (2 bullets)',
+      '4) 7-day founder move (5 concrete actions)',
+      '',
+      `Topic: ${topic}`
+    ].join('\n');
+
+    const cfg = getModelConfig({ envPath: opts.env });
+    const res = await inferWithFallback({ prompt, models: cfg.resolvedOrder, envPath: opts.env, maxOutputTokens: Number(opts.maxOutputTokens) || 420 });
+    logEvent('doomscroll', { ok: res.ok, attempts: res.attempts?.length || 0, model: res.model || null });
+
+    if (opts.json) return console.log(JSON.stringify(res, null, 2));
+
+    if (!res.ok) {
+      console.log('doomscroll failed across all models.');
+      for (const a of res.attempts || []) console.log(`- ${a.model}: FAIL (${a.error || 'unknown'})`);
+      process.exitCode = 1;
+      return;
+    }
+
+    console.log(`[${res.provider}] ${res.model}`);
+    console.log(res.text || '(empty response)');
+  }));
+
   program.command('init').description('Initialize local Destiny project config in .env').option('--env <path>', 'Path to .env file (default: ./.env)').action(safe(async (opts) => {
     const out = runInit({ envPath: opts.env });
     console.log(`Initialized Destiny config in ${out.envPath}`);
