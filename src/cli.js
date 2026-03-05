@@ -190,6 +190,41 @@ export function createCli() {
     console.log(res.text || '(empty response)');
   }));
 
+  program.command('cia-profiler <target...>').description('Profile a competitor/market actor and generate a strategic dossier').option('--env <path>', 'Path to .env file (default: ./.env)').option('--max-output-tokens <n>', 'Max output tokens', '520').option('--json', 'JSON output').action(safe(async (targetParts, opts) => {
+    const target = targetParts.join(' ').trim();
+    if (!target) throw new Error('Target is required.');
+
+    const prompt = [
+      'You are cia-profiler, an intelligence analyst for founders.',
+      'Build a concise profile with strategic recommendations.',
+      'Respond using EXACTLY these sections:',
+      '1) Target profile (who/what they are, current positioning)',
+      '2) Capability map (distribution, product speed, moat indicators, capital access)',
+      '3) Vulnerabilities (3 bullets)',
+      '4) Interview flow (8 sharp questions a founder should ask users/prospects to validate attacks against this target)',
+      '5) 14-day infiltration plan (5 legal/ethical actions)',
+      '6) Risk flags (3 bullets: legal, reputational, execution)',
+      '',
+      `Target: ${target}`
+    ].join('\n');
+
+    const cfg = getModelConfig({ envPath: opts.env });
+    const res = await inferWithFallback({ prompt, models: cfg.resolvedOrder, envPath: opts.env, maxOutputTokens: Number(opts.maxOutputTokens) || 520 });
+    logEvent('cia-profiler', { ok: res.ok, attempts: res.attempts?.length || 0, model: res.model || null });
+
+    if (opts.json) return console.log(JSON.stringify(res, null, 2));
+
+    if (!res.ok) {
+      console.log('cia-profiler failed across all models.');
+      for (const a of res.attempts || []) console.log(`- ${a.model}: FAIL (${a.error || 'unknown'})`);
+      process.exitCode = 1;
+      return;
+    }
+
+    console.log(`[${res.provider}] ${res.model}`);
+    console.log(res.text || '(empty response)');
+  }));
+
   program.command('doomscroll <topic...>').description('Simulate a chaotic doomscroll feed and extract strategic signal').option('--env <path>', 'Path to .env file (default: ./.env)').option('--max-output-tokens <n>', 'Max output tokens', '420').option('--json', 'JSON output').action(safe(async (topicParts, opts) => {
     const topic = topicParts.join(' ').trim();
     if (!topic) throw new Error('Topic is required.');
