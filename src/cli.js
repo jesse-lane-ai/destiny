@@ -257,6 +257,39 @@ export function createCli() {
     console.log(res.text || '(empty response)');
   }));
 
+  program.command('ai-billing-speedometer <window...>').description('Estimate AI spend velocity and provide budget controls').option('--env <path>', 'Path to .env file (default: ./.env)').option('--max-output-tokens <n>', 'Max output tokens', '420').option('--json', 'JSON output').action(safe(async (windowParts, opts) => {
+    const windowText = windowParts.join(' ').trim();
+    if (!windowText) throw new Error('Time window or usage context is required.');
+
+    const prompt = [
+      'You are ai-billing-speedometer, a finance-minded AI ops analyst.',
+      'Given the usage context, estimate spend velocity and suggest immediate controls.',
+      'Respond using EXACTLY these sections:',
+      '1) Spend velocity estimate (one line with explicit assumptions)',
+      '2) Burn drivers (3 bullets)',
+      '3) 7-day containment plan (5 concrete actions)',
+      '4) KPI dashboard (5 metrics to track daily)',
+      '',
+      `Usage context/time window: ${windowText}`
+    ].join('\n');
+
+    const cfg = getModelConfig({ envPath: opts.env });
+    const res = await inferWithFallback({ prompt, models: cfg.resolvedOrder, envPath: opts.env, maxOutputTokens: Number(opts.maxOutputTokens) || 420 });
+    logEvent('ai-billing-speedometer', { ok: res.ok, attempts: res.attempts?.length || 0, model: res.model || null });
+
+    if (opts.json) return console.log(JSON.stringify(res, null, 2));
+
+    if (!res.ok) {
+      console.log('ai-billing-speedometer failed across all models.');
+      for (const a of res.attempts || []) console.log(`- ${a.model}: FAIL (${a.error || 'unknown'})`);
+      process.exitCode = 1;
+      return;
+    }
+
+    console.log(`[${res.provider}] ${res.model}`);
+    console.log(res.text || '(empty response)');
+  }));
+
   program.command('init').description('Initialize local Destiny project config in .env').option('--env <path>', 'Path to .env file (default: ./.env)').action(safe(async (opts) => {
     const out = runInit({ envPath: opts.env });
     console.log(`Initialized Destiny config in ${out.envPath}`);
