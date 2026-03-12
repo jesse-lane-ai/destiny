@@ -190,6 +190,41 @@ export function createCli() {
     console.log(res.text || '(empty response)');
   }));
 
+  program.command('timeline-split <scenario...>').description('Model best/base/worst-case timelines and force immediate execution choices').option('--env <path>', 'Path to .env file (default: ./.env)').option('--max-output-tokens <n>', 'Max output tokens', '460').option('--json', 'JSON output').action(safe(async (scenarioParts, opts) => {
+    const scenario = scenarioParts.join(' ').trim();
+    if (!scenario) throw new Error('Scenario is required.');
+
+    const prompt = [
+      'You are timeline-split, a strategic planning analyst for founders.',
+      'Produce a three-path timeline and force concrete execution decisions.',
+      'Respond using EXACTLY these sections:',
+      '1) Baseline assumptions (3 bullets)',
+      '2) Best-case timeline (30/90/180 day milestones)',
+      '3) Base-case timeline (30/90/180 day milestones)',
+      '4) Worst-case timeline (30/90/180 day milestones)',
+      '5) Trigger thresholds (3 quantitative signals that indicate path changes)',
+      '6) Next 72 hours (5 concrete moves)',
+      '',
+      `Scenario: ${scenario}`
+    ].join('\n');
+
+    const cfg = getModelConfig({ envPath: opts.env });
+    const res = await inferWithFallback({ prompt, models: cfg.resolvedOrder, envPath: opts.env, maxOutputTokens: Number(opts.maxOutputTokens) || 460 });
+    logEvent('timeline-split', { ok: res.ok, attempts: res.attempts?.length || 0, model: res.model || null });
+
+    if (opts.json) return console.log(JSON.stringify(res, null, 2));
+
+    if (!res.ok) {
+      console.log('timeline-split failed across all models.');
+      for (const a of res.attempts || []) console.log(`- ${a.model}: FAIL (${a.error || 'unknown'})`);
+      process.exitCode = 1;
+      return;
+    }
+
+    console.log(`[${res.provider}] ${res.model}`);
+    console.log(res.text || '(empty response)');
+  }));
+
   program.command('cia-profiler <target...>').description('Profile a competitor/market actor and generate a strategic dossier').option('--env <path>', 'Path to .env file (default: ./.env)').option('--max-output-tokens <n>', 'Max output tokens', '520').option('--json', 'JSON output').action(safe(async (targetParts, opts) => {
     const target = targetParts.join(' ').trim();
     if (!target) throw new Error('Target is required.');
