@@ -100,6 +100,17 @@ test('cia-profiler returns failure when no inference credentials exist', () => {
   assert.match(run.stdout, /FAIL/);
 });
 
+test('debt-punch returns failure when no inference credentials exist', () => {
+  const dir = mkdtempSync(path.join(tmpdir(), 'destiny-test-'));
+  const envPath = path.join(dir, '.env');
+  writeFileSync(envPath, '', 'utf8');
+
+  const run = runCli(['debt-punch', 'credit card at 29% APR, 6k balance', '--env', envPath]);
+  assert.equal(run.status, 1, `status=${run.status}\nstdout=${run.stdout}\nstderr=${run.stderr}`);
+  assert.match(run.stdout, /debt-punch failed across all models\./);
+  assert.match(run.stdout, /FAIL/);
+});
+
 test('ai-billing-speedometer returns failure when no inference credentials exist', () => {
   const dir = mkdtempSync(path.join(tmpdir(), 'destiny-test-'));
   const envPath = path.join(dir, '.env');

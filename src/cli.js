@@ -225,6 +225,41 @@ export function createCli() {
     console.log(res.text || '(empty response)');
   }));
 
+
+  program.command('debt-punch <situation...>').description('Expose high-interest debt traps and force an aggressive payoff sequence').option('--env <path>', 'Path to .env file (default: ./.env)').option('--max-output-tokens <n>', 'Max output tokens', '420').option('--json', 'JSON output').action(safe(async (situationParts, opts) => {
+    const situation = situationParts.join(' ').trim();
+    if (!situation) throw new Error('Situation is required.');
+
+    const prompt = [
+      'You are debt-punch, a ruthless personal finance operator.',
+      'Given the debt situation, force a realistic, high-leverage payoff plan.',
+      'Respond using EXACTLY these sections:',
+      '1) Debt triage (rank from most dangerous to least dangerous, with reason)',
+      '2) Interest bleed estimate (one-line monthly estimate with assumptions)',
+      '3) 30-day punch plan (5 concrete actions)',
+      '4) Payment order strategy (next 6 payments in order)',
+      '5) Failure modes (3 bullets) + countermeasures (3 bullets)',
+      '',
+      `Situation: ${situation}`
+    ].join('\n');
+
+    const cfg = getModelConfig({ envPath: opts.env });
+    const res = await inferWithFallback({ prompt, models: cfg.resolvedOrder, envPath: opts.env, maxOutputTokens: Number(opts.maxOutputTokens) || 420 });
+    logEvent('debt-punch', { ok: res.ok, attempts: res.attempts?.length || 0, model: res.model || null });
+
+    if (opts.json) return console.log(JSON.stringify(res, null, 2));
+
+    if (!res.ok) {
+      console.log('debt-punch failed across all models.');
+      for (const a of res.attempts || []) console.log(`- ${a.model}: FAIL (${a.error || 'unknown'})`);
+      process.exitCode = 1;
+      return;
+    }
+
+    console.log(`[${res.provider}] ${res.model}`);
+    console.log(res.text || '(empty response)');
+  }));
+
   program.command('cia-profiler <target...>').description('Profile a competitor/market actor and generate a strategic dossier').option('--env <path>', 'Path to .env file (default: ./.env)').option('--max-output-tokens <n>', 'Max output tokens', '520').option('--json', 'JSON output').action(safe(async (targetParts, opts) => {
     const target = targetParts.join(' ').trim();
     if (!target) throw new Error('Target is required.');
