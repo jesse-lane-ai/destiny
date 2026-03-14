@@ -260,6 +260,40 @@ export function createCli() {
     console.log(res.text || '(empty response)');
   }));
 
+  program.command('internet-archaeologist <topic...>').description('Excavate old patterns/signals from internet trends and turn them into current opportunities').option('--env <path>', 'Path to .env file (default: ./.env)').option('--max-output-tokens <n>', 'Max output tokens', '500').option('--json', 'JSON output').action(safe(async (topicParts, opts) => {
+    const topic = topicParts.join(' ').trim();
+    if (!topic) throw new Error('Topic is required.');
+
+    const prompt = [
+      'You are internet-archaeologist, a researcher who mines historical internet behavior for actionable present-day strategy.',
+      'Given the topic, identify repeatable patterns from prior cycles and suggest specific moves now.',
+      'Respond using EXACTLY these sections:',
+      '1) Era map (3 notable waves/moments and what defined them)',
+      '2) Pattern recurrence (3 patterns that keep repeating)',
+      '3) Graveyard lessons (3 failed approaches + why they failed)',
+      '4) Unearthed opportunities (5 concrete opportunities relevant right now)',
+      '5) 10-day excavation sprint (5 actions with clear outputs)',
+      '',
+      `Topic: ${topic}`
+    ].join('\n');
+
+    const cfg = getModelConfig({ envPath: opts.env });
+    const res = await inferWithFallback({ prompt, models: cfg.resolvedOrder, envPath: opts.env, maxOutputTokens: Number(opts.maxOutputTokens) || 500 });
+    logEvent('internet-archaeologist', { ok: res.ok, attempts: res.attempts?.length || 0, model: res.model || null });
+
+    if (opts.json) return console.log(JSON.stringify(res, null, 2));
+
+    if (!res.ok) {
+      console.log('internet-archaeologist failed across all models.');
+      for (const a of res.attempts || []) console.log(`- ${a.model}: FAIL (${a.error || 'unknown'})`);
+      process.exitCode = 1;
+      return;
+    }
+
+    console.log(`[${res.provider}] ${res.model}`);
+    console.log(res.text || '(empty response)');
+  }));
+
   program.command('cia-profiler <target...>').description('Profile a competitor/market actor and generate a strategic dossier').option('--env <path>', 'Path to .env file (default: ./.env)').option('--max-output-tokens <n>', 'Max output tokens', '520').option('--json', 'JSON output').action(safe(async (targetParts, opts) => {
     const target = targetParts.join(' ').trim();
     if (!target) throw new Error('Target is required.');
