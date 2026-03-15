@@ -122,6 +122,17 @@ test('internet-archaeologist returns failure when no inference credentials exist
   assert.match(run.stdout, /FAIL/);
 });
 
+test('exit-simulator returns failure when no inference credentials exist', () => {
+  const dir = mkdtempSync(path.join(tmpdir(), 'destiny-test-'));
+  const envPath = path.join(dir, '.env');
+  writeFileSync(envPath, '', 'utf8');
+
+  const run = runCli(['exit-simulator', 'Sell B2B automation SaaS for $50M in 3 years', '--env', envPath]);
+  assert.equal(run.status, 1, `status=${run.status}\nstdout=${run.stdout}\nstderr=${run.stderr}`);
+  assert.match(run.stdout, /exit-simulator failed across all models\./);
+  assert.match(run.stdout, /FAIL/);
+});
+
 test('ai-billing-speedometer returns failure when no inference credentials exist', () => {
   const dir = mkdtempSync(path.join(tmpdir(), 'destiny-test-'));
   const envPath = path.join(dir, '.env');

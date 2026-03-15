@@ -294,6 +294,40 @@ export function createCli() {
     console.log(res.text || '(empty response)');
   }));
 
+  program.command('exit-simulator <scenario...>').description('Stress-test your exit fantasy and force pragmatic execution priorities').option('--env <path>', 'Path to .env file (default: ./.env)').option('--max-output-tokens <n>', 'Max output tokens', '520').option('--json', 'JSON output').action(safe(async (scenarioParts, opts) => {
+    const scenario = scenarioParts.join(' ').trim();
+    if (!scenario) throw new Error('Scenario is required.');
+
+    const prompt = [
+      'You are exit-simulator, an M&A reality-check advisor for founders.',
+      'Given the scenario, evaluate exit plausibility and force near-term execution priorities.',
+      'Respond using EXACTLY these sections:',
+      '1) Exit fantasy audit (one paragraph: what is realistic vs delusional)',
+      '2) Buyer map (3 plausible acquirer archetypes + why they might care)',
+      '3) Deal blockers (5 concrete blockers ranked by severity)',
+      '4) Value acceleration plan (5 actions for the next 90 days)',
+      '5) No-exit fallback (what to build if no acquisition happens in 24 months)',
+      '',
+      `Scenario: ${scenario}`
+    ].join('\n');
+
+    const cfg = getModelConfig({ envPath: opts.env });
+    const res = await inferWithFallback({ prompt, models: cfg.resolvedOrder, envPath: opts.env, maxOutputTokens: Number(opts.maxOutputTokens) || 520 });
+    logEvent('exit-simulator', { ok: res.ok, attempts: res.attempts?.length || 0, model: res.model || null });
+
+    if (opts.json) return console.log(JSON.stringify(res, null, 2));
+
+    if (!res.ok) {
+      console.log('exit-simulator failed across all models.');
+      for (const a of res.attempts || []) console.log(`- ${a.model}: FAIL (${a.error || 'unknown'})`);
+      process.exitCode = 1;
+      return;
+    }
+
+    console.log(`[${res.provider}] ${res.model}`);
+    console.log(res.text || '(empty response)');
+  }));
+
   program.command('cia-profiler <target...>').description('Profile a competitor/market actor and generate a strategic dossier').option('--env <path>', 'Path to .env file (default: ./.env)').option('--max-output-tokens <n>', 'Max output tokens', '520').option('--json', 'JSON output').action(safe(async (targetParts, opts) => {
     const target = targetParts.join(' ').trim();
     if (!target) throw new Error('Target is required.');

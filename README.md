@@ -90,6 +90,10 @@ destiny doctor
 - OpenAI OAuth is delegated to Codex auth (`codex login`), no custom client-id flow in Destiny.
 - Local telemetry is written to `~/.destiny/events.jsonl`.
 
+## Daily update (2026-03-15)
+- Added new `exit-simulator` command scaffold with a structured M&A reality-check prompt and fallback-aware execution.
+- Added CLI test coverage for the no-credential failure path of `exit-simulator`.
+
 ## Daily update (2026-03-14)
 - Added new `internet-archaeologist` command scaffold with a structured output prompt and fallback-aware execution.
 - Added CLI test coverage for the no-credential failure path of `internet-archaeologist`.
