@@ -328,6 +328,40 @@ export function createCli() {
     console.log(res.text || '(empty response)');
   }));
 
+  program.command('ghost-competitor <business...>').description('Create a stealth competitor strategy and pressure-test your defensive moat').option('--env <path>', 'Path to .env file (default: ./.env)').option('--max-output-tokens <n>', 'Max output tokens', '520').option('--json', 'JSON output').action(safe(async (businessParts, opts) => {
+    const business = businessParts.join(' ').trim();
+    if (!business) throw new Error('Business context is required.');
+
+    const prompt = [
+      'You are ghost-competitor, a stealth strategy operator.',
+      'Given the business context, design a plausible hidden competitor attack and defensive response.',
+      'Respond using EXACTLY these sections:',
+      '1) Ghost profile (who this competitor is and how they stay unnoticed)',
+      '2) Attack vectors (5 concrete vectors ranked by likely impact)',
+      '3) Early warning signals (5 measurable indicators to monitor weekly)',
+      '4) Defensive moat upgrades (5 concrete moves for the next 30 days)',
+      '5) Counter-offensive plan (3 ethical actions to preempt market capture)',
+      '',
+      `Business context: ${business}`
+    ].join('\n');
+
+    const cfg = getModelConfig({ envPath: opts.env });
+    const res = await inferWithFallback({ prompt, models: cfg.resolvedOrder, envPath: opts.env, maxOutputTokens: Number(opts.maxOutputTokens) || 520 });
+    logEvent('ghost-competitor', { ok: res.ok, attempts: res.attempts?.length || 0, model: res.model || null });
+
+    if (opts.json) return console.log(JSON.stringify(res, null, 2));
+
+    if (!res.ok) {
+      console.log('ghost-competitor failed across all models.');
+      for (const a of res.attempts || []) console.log(`- ${a.model}: FAIL (${a.error || 'unknown'})`);
+      process.exitCode = 1;
+      return;
+    }
+
+    console.log(`[${res.provider}] ${res.model}`);
+    console.log(res.text || '(empty response)');
+  }));
+
   program.command('cia-profiler <target...>').description('Profile a competitor/market actor and generate a strategic dossier').option('--env <path>', 'Path to .env file (default: ./.env)').option('--max-output-tokens <n>', 'Max output tokens', '520').option('--json', 'JSON output').action(safe(async (targetParts, opts) => {
     const target = targetParts.join(' ').trim();
     if (!target) throw new Error('Target is required.');
