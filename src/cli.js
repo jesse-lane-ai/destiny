@@ -362,6 +362,41 @@ export function createCli() {
     console.log(res.text || '(empty response)');
   }));
 
+  program.command('attention-leak <workflow...>').description('Diagnose where founder attention is leaking and enforce a tighter execution focus').option('--env <path>', 'Path to .env file (default: ./.env)').option('--max-output-tokens <n>', 'Max output tokens', '500').option('--json', 'JSON output').action(safe(async (workflowParts, opts) => {
+    const workflow = workflowParts.join(' ').trim();
+    if (!workflow) throw new Error('Workflow context is required.');
+
+    const prompt = [
+      'You are attention-leak, an execution coach that hunts distraction and context-switching waste.',
+      'Given the workflow context, identify exactly where attention is bleeding and how to fix it.',
+      'Respond using EXACTLY these sections:',
+      '1) Leak map (5 specific attention leaks ranked by impact)',
+      '2) Root causes (3 bullets tied to behavior/systems)',
+      '3) Stop-doing list (5 things to pause immediately)',
+      '4) Focus firewall (5 concrete guardrails for the next 7 days)',
+      '5) Daily lock-in ritual (morning, mid-day, shutdown checklist)',
+      '',
+      `Workflow context: ${workflow}`
+    ].join('\n');
+
+    const cfg = getModelConfig({ envPath: opts.env });
+    const res = await inferWithFallback({ prompt, models: cfg.resolvedOrder, envPath: opts.env, maxOutputTokens: Number(opts.maxOutputTokens) || 500 });
+    logEvent('attention-leak', { ok: res.ok, attempts: res.attempts?.length || 0, model: res.model || null });
+
+    if (opts.json) return console.log(JSON.stringify(res, null, 2));
+
+    if (!res.ok) {
+      console.log('attention-leak failed across all models.');
+      for (const a of res.attempts || []) console.log(`- ${a.model}: FAIL (${a.error || 'unknown'})`);
+      process.exitCode = 1;
+      return;
+    }
+
+    console.log(`[${res.provider}] ${res.model}`);
+    console.log(res.text || '(empty response)');
+  }));
+
+
   program.command('cia-profiler <target...>').description('Profile a competitor/market actor and generate a strategic dossier').option('--env <path>', 'Path to .env file (default: ./.env)').option('--max-output-tokens <n>', 'Max output tokens', '520').option('--json', 'JSON output').action(safe(async (targetParts, opts) => {
     const target = targetParts.join(' ').trim();
     if (!target) throw new Error('Target is required.');

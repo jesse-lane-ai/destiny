@@ -90,6 +90,10 @@ destiny doctor
 - OpenAI OAuth is delegated to Codex auth (`codex login`), no custom client-id flow in Destiny.
 - Local telemetry is written to `~/.destiny/events.jsonl`.
 
+## Daily update (2026-03-17)
+- Added new `attention-leak` command scaffold with a structured execution-focus prompt and fallback-aware execution.
+- Added CLI test coverage for the no-credential failure path of `attention-leak`.
+
 ## Daily update (2026-03-16)
 - Added new `ghost-competitor` command scaffold with a structured stealth-competition prompt and fallback-aware execution.
 - Added CLI test coverage for the no-credential failure path of `ghost-competitor`.

@@ -155,3 +155,15 @@ test('ghost-competitor returns failure when no inference credentials exist', () 
   assert.match(run.stdout, /ghost-competitor failed across all models\./);
   assert.match(run.stdout, /FAIL/);
 });
+
+
+test('attention-leak returns failure when no inference credentials exist', () => {
+  const dir = mkdtempSync(path.join(tmpdir(), 'destiny-test-'));
+  const envPath = path.join(dir, '.env');
+  writeFileSync(envPath, '', 'utf8');
+
+  const run = runCli(['attention-leak', 'constant Slack pings and random context switching', '--env', envPath]);
+  assert.equal(run.status, 1, `status=${run.status}\nstdout=${run.stdout}\nstderr=${run.stderr}`);
+  assert.match(run.stdout, /attention-leak failed across all models\./);
+  assert.match(run.stdout, /FAIL/);
+});
